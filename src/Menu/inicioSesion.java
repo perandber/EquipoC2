@@ -38,34 +38,37 @@ public class inicioSesion {
         
         String usuario;
         String contrasenya;
-
-        do {
-        	
-        	System.out.print("Introduzca el nombre de usuario: ");
-    		usuario = sc.nextLine();
-    		System.out.print("Introduzca la contraseña: ");
-    		contrasenya = sc.nextLine();
-    		
-            try {
-                stat = con.createStatement();
-    			
-                //query a ejecutar
-                //comprueba si hay lineas con el usuario y contraseña introducidos
-                rs = stat.executeQuery("select * from usuarios where nombre = '"+usuario+"' and password_hash = '"+contrasenya+"' and rol = 'tecnico' ");
-                //pasa a verdadero si hay por lo menos una linea
-                exito = rs.next();
-            } catch (SQLException e) {
-            	e.printStackTrace();
-    		}
-            
-            if (!exito) {
-            	//Inicio de sesion no exitoso
-            	System.out.println("No existe ningun usuario tecnico con estos datos");
-            }
-        } while (!exito);    
-        //Inicio de sesion exitoso
-       	System.out.println("Bienvenido");
-       	menu.menu();
-	}
+        
+        if (con != null) {
+        	do {
+            	
+            	System.out.print("Introduzca el nombre de usuario: ");
+        		usuario = sc.nextLine();
+        		System.out.print("Introduzca la contraseña: ");
+        		contrasenya = sc.nextLine();
+        		
+                try {
+                    stat = con.createStatement();
+        			
+                    //query a ejecutar
+                    //comprueba si hay lineas con el usuario y contraseña introducidos
+                    rs = stat.executeQuery("select * from usuarios where nombre = '"+usuario+"' and password_hash = '"+contrasenya+"' and rol = 'tecnico' ");
+                    //pasa a verdadero si hay por lo menos una linea
+                    exito = rs.next();
+                } catch (SQLException e) {
+                	e.printStackTrace();
+        		}
+                
+                if (!exito) {
+                	//Inicio de sesion no exitoso
+                	System.out.println("No existe ningun usuario tecnico con estos datos");
+                }
+            } while (!exito);    
+            //Inicio de sesion exitoso
+           	System.out.println("Bienvenido");
+           	menu.menu();
+    	}
+    }
+        
 
 }
