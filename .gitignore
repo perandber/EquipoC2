@@ -38,3 +38,12 @@ bin/Objetos/proveedores.class
 bin/Objetos/tareas_herramientas.class
 bin/Objetos/tareas_proyecto.class
 bin/Objetos/usuario.class
+bin/Test/PruebasEquipoC.class
+bin/Objetos/planes_mantenimiento.class
+bin/Objetos/pedidos_detalle.class
+bin/Objetos/pedidos_compra.class
+bin/Objetos/planes_mantenimiento.class
+bin/Objetos/ordenes_trabajo.class
+bin/module-info.class
+bin/Comun/conexion.class
+bin/Comun/conexion.class

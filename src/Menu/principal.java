@@ -66,22 +66,22 @@ public class principal {
 					+ "2. Ejecuciones mantenimiento\n"
 					+ "3. Gamas mantenimiento\n"
 					+ "4. Herramientas\n"
-					+ "5. Horarios trabajo\n"
-					+ "6. Incidencias\n"
+					+ "5. Horarios trabajo\n" //Sergio
+					+ "6. Incidencias\n" //Sergio
 					+ "7. Maquinas\n"
 					+ "8. Maquinas piezas\n"
 					+ "9. Ordenes trabajo\n"
 					+ "10. Pedidos compra\n"
 					+ "11. Pedido detalle\n"
 					+ "12. Piezas repuesto\n"
-					+ "13. Planes mantenimiento\n"
+					+ "13. Planes mantenimiento\n" //Sergio
 					+ "14. Proveedores maquinas\n"
-					+ "15. Proyectos gantt\n"
-					+ "16. Analisis maquinas\n"
-					+ "17. Tareas ejecutadas\n"
-					+ "18. Tareas herramientas\n"
-					+ "19. Taeras mantenimiento\n"
-					+ "20. Tareas proyecto\n"
+					+ "15. Proyectos gantt\n" //Sergio
+					+ "16. Analisis maquinas\n" //Sergio
+					+ "17. Tareas ejecutadas\n" //Perceval
+					+ "18. Tareas herramientas\n" //Perceval
+					+ "19. Taeras mantenimiento\n" //Perceval
+					+ "20. Tareas proyecto\n" //Perceval
 					+ "21. Usuarios\n");
 			//recibir decision del usuario
 			try {
