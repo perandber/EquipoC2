@@ -8,171 +8,265 @@ import Comun.interfaces;
 import Objetos.analisis_maquinas;
 
 /**
+ * Clase encargada de conectar con la base de datos para gestionar los analisis 
+ * que se les hacen a las maquinas (presion, temperatura, etc).
+ * Permite listar, crear, modificar y borrar estos registros.
+ * 
  * @author Sergio
- * Clase DAO (Data Access Object) para la tabla analisis_maquinas.
- * Su responsabilidad es comunicarse con la base de datos: leer, insertar y eliminar registros. */
+ */
 public class analisis_maquinasDAO extends interfaces {
 
-    // Scanner para leer la entrada del usuario por teclado cuando se piden datos
-    Scanner sc = new Scanner(System.in);
+    private Scanner sc = new Scanner(System.in);
 
-    // Lista tipada que almacenará los objetos analisis_maquinas recuperados de la BD
-    // Se declara aquí como atributo para que esté disponible en toda la clase
-    ArrayList<analisis_maquinas> analisis = new ArrayList<analisis_maquinas>();
-
-    // Menu() muestra las opciones disponibles en un bucle hasta que el usuario pulse 0 para salir
+    /**
+     * Muestra un menu por pantalla con todas las opciones disponibles para 
+     * gestionar los analisis y lee la opcion que elija el usuario.
+     */
     @Override
     public void Menu() {
         int opcion;
         do {
-            System.out.println("\n--- 16. ANALISIS DE MAQUINAS ---");
-            System.out.println("1. Mostrar todos los analisis");
-            System.out.println("2. Registrar nuevo analisis (Insert)");
-            System.out.println("3. Eliminar un analisis (Delete)");
-            System.out.println("0. Volver al menu principal");
-            System.out.print("Opcion: ");
+            System.out.println("\n--- MENU ANALISIS MAQUINAS ---");
+            System.out.println("1. Mostrar todos los registros");
+            System.out.println("2. Crear nuevo analisis");
+            System.out.println("3. Modificar un analisis");
+            System.out.println("4. Borrar un analisis");
+            System.out.println("0. Salir");
+            System.out.print("Elige una opcion: ");
 
-            // Usamos try-catch porque si el usuario escribe algo que no es un número, parseInt lanzaría una excepción
-            // Si ocurre ese error, asignamos -1 para que el switch no ejecute nada
             try {
                 opcion = Integer.parseInt(sc.nextLine());
-            } catch (Exception e) { opcion = -1; }
-
-            // Según la opción elegida, llamamos al método correspondiente
-            switch (opcion) {
-                case 1 -> Mostrar();
-                case 2 -> Crear();
-                case 3 -> Borrar();
+            } catch (Exception e) {
+                opcion = -1;
             }
-        } while (opcion != 0); // El bucle continúa mientras no se pulse 0
+
+            switch (opcion) {
+                case 1: Mostrar(); break;
+                case 2: Crear(); break;
+                case 3: Modificar(); break;
+                case 4: Borrar(); break;
+                case 0: System.out.println("Volviendo..."); break;
+                default: System.out.println("Opcion no valida.");
+            }
+        } while (opcion != 0);
     }
 
-    // Recibir() se conecta a la BD, ejecuta la consulta SELECT y convierte cada fila en un objeto analisis_maquinas
-    // Devuelve ArrayList<Object> porque así lo exige la clase abstracta; los objetos analisis_maquinas son válidos porque toda clase hereda de Object
+    /**
+     * Se conecta a la base de datos y recupera todos los registros de analisis 
+     * guardados para convertirlos en una lista de objetos.
+     * 
+     * @return Una lista con todos los objetos de tipo analisis_maquinas encontrados.
+     */
     @Override
     public ArrayList<Object> Recibir() {
-        ArrayList<Object> lista = new ArrayList<Object>(); // Lista vacía que iremos llenando
-
-        // Consulta SQL que trae todas las filas de la tabla
+        ArrayList<Object> lista = new ArrayList<>();
         String sql = "SELECT * FROM analisis_maquinas";
-
-        // Declaramos la conexión y los objetos SQL fuera del try para poder cerrarlos en el finally
-        Connection con = conexion.Conectar(); // Abre la conexión con la base de datos
-        Statement st = null;  // Statement sirve para enviar la consulta SQL a la BD
-        ResultSet rs = null;  // ResultSet es el "cursor" que recorre las filas devueltas por la consulta
+        
+        Connection con = conexion.Conectar();
+        Statement st = null;
+        ResultSet rs = null;
 
         try {
-            st = con.createStatement();  // Creamos el Statement a partir de la conexión abierta
-            rs = st.executeQuery(sql);   // Enviamos el SELECT y el resultado queda en rs
+            st = con.createStatement();
+            rs = st.executeQuery(sql);
 
-            // rs.next() avanza una fila cada vez; devuelve false cuando no hay más filas
             while (rs.next()) {
-                // Leemos cada columna de la fila actual y la guardamos en una variable local
-                int       idAnalisis     = rs.getInt("id_analisis");
-                int       idMaquina      = rs.getInt("id_maquina");
-                String    nombreVariable = rs.getString("nombre_variable");
-                double    valor          = rs.getDouble("valor");
-                String    unidadMedida   = rs.getString("unidad_medida");
-                Timestamp fechaRegistro  = rs.getTimestamp("fecha_registro"); // Timestamp porque la BD guarda fecha y hora
-
-                // Con los datos de la fila construimos un objeto analisis_maquinas y lo metemos en la lista
-                lista.add(new analisis_maquinas(idAnalisis, idMaquina,
-                          nombreVariable, valor, unidadMedida, fechaRegistro));
+                analisis_maquinas obj = new analisis_maquinas(
+                    rs.getInt("id_analisis"),
+                    rs.getInt("id_maquina"),
+                    rs.getString("nombre_variable"),
+                    rs.getDouble("valor"),
+                    rs.getString("unidad_medida"),
+                    rs.getTimestamp("fecha_registro")
+                );
+                lista.add(obj);
             }
-
         } catch (SQLException e) {
-            // Si hay cualquier error de base de datos, lo mostramos por consola y hacemos visible el detalle
-            System.out.println("Error al recibir datos de analisis");
+            System.out.println("Error al leer la base de datos.");
             e.printStackTrace();
         } finally {
-            // El bloque finally se ejecuta SIEMPRE, aunque haya habido un error
-            // Es importante cerrar los recursos para no dejar conexiones abiertas en la BD
             try {
-                if (rs  != null) rs.close();  // Cerramos el cursor de resultados
-                if (st  != null) st.close();  // Cerramos el statement
-                if (con != null) con.close(); // Cerramos la conexión con la BD
+                if (rs != null) rs.close();
+                if (st != null) st.close();
+                if (con != null) con.close();
             } catch (SQLException e) {
-                System.out.println("Error al cerrar conexion a la base de datos");
+                System.out.println("Error al cerrar la conexion.");
             }
         }
-
-        return lista; // Devolvemos la lista con todos los objetos, o vacía si hubo error
+        return lista;
     }
 
-    // Mostrar() llama a Recibir() para obtener todos los registros y los imprime por consola
-    // Iteramos sobre Object; al hacer println se llama automáticamente al toString() definido en analisis_maquinas
+    /**
+     * Coge la lista de registros de la base de datos y los imprime uno a uno 
+     * por la consola para que el usuario pueda verlos.
+     * 
+     * @return true si el proceso de mostrar los datos termina correctamente.
+     */
     @Override
     public boolean Mostrar() {
         ArrayList<Object> datos = Recibir();
         if (datos.isEmpty()) {
-            System.out.println("No hay registros en la tabla.");
+            System.out.println("No hay datos que mostrar.");
         } else {
-            for (Object a : datos) {
-                System.out.println(a); // Llama internamente a toString() del objeto
+            for (Object obj : datos) {
+                System.out.println(obj.toString());
             }
         }
         return true;
     }
 
-    // Crear() pide los datos al usuario y los inserta como una nueva fila en la tabla
+    /**
+     * Pide al usuario por teclado los datos de un nuevo analisis (id maquina, variable, 
+     * valor y unidad) y los guarda como una nueva fila en la base de datos.
+     * 
+     * @return true si el registro se guardo correctamente, false si hubo algun error.
+     */
     @Override
     protected boolean Crear() {
-        System.out.print("ID de la maquina: ");
+        System.out.println("\n-- Registrar Nuevo Analisis --");
+        System.out.print("ID Maquina: ");
         int idM = Integer.parseInt(sc.nextLine());
-        System.out.print("Nombre de la variable (ej. Presion): ");
+        System.out.print("Variable (ej: Temperatura): ");
         String var = sc.nextLine();
-        System.out.print("Valor medido: ");
+        System.out.print("Valor: ");
         double val = Double.parseDouble(sc.nextLine());
-        System.out.print("Unidad de medida (ej. bar): ");
+        System.out.print("Unidad (ej: Celsius): ");
         String uni = sc.nextLine();
 
-        // Los '?' son parámetros que se rellenan después con setInt, setString, etc.
-        // Esto evita inyección SQL y hace el código más seguro que concatenar Strings directamente
-        // NOW() es una función de MySQL que inserta automáticamente la fecha y hora actuales
         String sql = "INSERT INTO analisis_maquinas (id_maquina, nombre_variable, valor, unidad_medida, fecha_registro) VALUES (?, ?, ?, ?, NOW())";
 
-        // try-with-resources: cierra automáticamente la conexión y el PreparedStatement al terminar el bloque
-        try (Connection c = conexion.Conectar();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-
-            // Asignamos cada '?' en el mismo orden en que aparecen en el SQL
+        try (Connection con = conexion.Conectar();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            
             ps.setInt(1, idM);
             ps.setString(2, var);
             ps.setDouble(3, val);
             ps.setString(4, uni);
 
-            ps.executeUpdate(); // executeUpdate() se usa para INSERT, UPDATE y DELETE (no devuelve filas)
-            System.out.println("Analisis guardado correctamente.");
-            return true;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    // Borrar() pide el ID del registro que se quiere eliminar y lo borra de la tabla
-    @Override
-    protected boolean Borrar() {
-        System.out.print("Introduce el ID del analisis a borrar: ");
-        int id = Integer.parseInt(sc.nextLine());
-
-        // DELETE con WHERE para borrar solo el registro con ese ID concreto
-        String sql = "DELETE FROM analisis_maquinas WHERE id_analisis = ?";
-
-        try (Connection c = conexion.Conectar();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, id); // Sustituimos el '?' por el ID introducido
             ps.executeUpdate();
-            System.out.println("Registro eliminado.");
+            System.out.println("Registro guardado con exito.");
             return true;
         } catch (SQLException e) {
+            System.out.println("Error al guardar el registro.");
             return false;
         }
     }
 
-    // Modificar() no está implementado en esta versión; devuelve false para cumplir con el contrato de la clase abstracta
+    /**
+     * Pide el ID de un analisis existente, muestra sus datos actuales y permite 
+     * cambiarlos uno por uno. Si se deja un campo vacio, se mantiene el valor original.
+     * 
+     * @return true si la actualizacion fue bien, false si no se encontro el ID o fallo el proceso.
+     */
     @Override
     protected boolean Modificar() {
-        return false;
+        System.out.print("\nID del analisis a modificar: ");
+        int id = Integer.parseInt(sc.nextLine());
+
+        analisis_maquinas actual = buscarPorId(id);
+        if (actual == null) {
+            System.out.println("No se encontro el registro.");
+            return false;
+        }
+
+        System.out.println("Datos actuales: " + actual);
+        System.out.println("Introduce nuevos datos (deja vacio para no cambiar):");
+
+        System.out.print("ID Maquina [" + actual.getIdMaquina() + "]: ");
+        String input = sc.nextLine();
+        if (!input.isEmpty()) actual.setIdMaquina(Integer.parseInt(input));
+
+        System.out.print("Variable [" + actual.getNombreVariable() + "]: ");
+        input = sc.nextLine();
+        if (!input.isEmpty()) actual.setNombreVariable(input);
+
+        System.out.print("Valor [" + actual.getValor() + "]: ");
+        input = sc.nextLine();
+        if (!input.isEmpty()) actual.setValor(Double.parseDouble(input));
+
+        System.out.print("Unidad [" + actual.getUnidadMedida() + "]: ");
+        input = sc.nextLine();
+        if (!input.isEmpty()) actual.setUnidadMedida(input);
+
+        String sql = "UPDATE analisis_maquinas SET id_maquina=?, nombre_variable=?, valor=?, unidad_medida=? WHERE id_analisis=?";
+
+        try (Connection con = conexion.Conectar();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            
+            ps.setInt(1, actual.getIdMaquina());
+            ps.setString(2, actual.getNombreVariable());
+            ps.setDouble(3, actual.getValor());
+            ps.setString(4, actual.getUnidadMedida());
+            ps.setInt(5, id);
+
+            ps.executeUpdate();
+            System.out.println("Registro actualizado.");
+            return true;
+        } catch (SQLException e) {
+            System.out.println("Error al actualizar.");
+            return false;
+        }
+    }
+
+    /**
+     * Pide al usuario el ID de un analisis y lo intenta eliminar permanentemente 
+     * de la tabla en la base de datos.
+     * 
+     * @return true si el registro fue borrado, false si el ID no existia o dio error.
+     */
+    @Override
+    protected boolean Borrar() {
+        System.out.print("\nID del analisis a borrar: ");
+        int id = Integer.parseInt(sc.nextLine());
+
+        String sql = "DELETE FROM analisis_maquinas WHERE id_analisis = ?";
+
+        try (Connection con = conexion.Conectar();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            
+            ps.setInt(1, id);
+            int filas = ps.executeUpdate();
+            
+            if (filas > 0) {
+                System.out.println("Registro borrado.");
+                return true;
+            } else {
+                System.out.println("No se encontro el ID.");
+                return false;
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al borrar.");
+            return false;
+        }
+    }
+
+    /**
+     * Busca en la base de datos un analisis concreto usando su numero de ID.
+     * 
+     * @param id El numero identificador del analisis que queremos buscar.
+     * @return El objeto con los datos del analisis si lo encuentra, o null si no existe.
+     */
+    private analisis_maquinas buscarPorId(int id) {
+        String sql = "SELECT * FROM analisis_maquinas WHERE id_analisis = ?";
+        try (Connection con = conexion.Conectar();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            
+            if (rs.next()) {
+                return new analisis_maquinas(
+                    rs.getInt("id_analisis"),
+                    rs.getInt("id_maquina"),
+                    rs.getString("nombre_variable"),
+                    rs.getDouble("valor"),
+                    rs.getString("unidad_medida"),
+                    rs.getTimestamp("fecha_registro")
+                );
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al buscar por ID.");
+        }
+        return null;
     }
 }

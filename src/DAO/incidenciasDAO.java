@@ -8,152 +8,254 @@ import Comun.interfaces;
 import Objetos.incidencias;
 
 /**
+ * Clase encargada de conectar con la base de datos para gestionar las incidencias 
+ * o averias de las maquinas (fallos, roturas, etc).
+ * Permite listar los fallos, reportar nuevos y marcarlos como resueltos.
+ * 
  * @author Sergio
- * Clase DAO (Data Access Object) para la tabla incidencias.
- * Su responsabilidad es comunicarse con la base de datos: leer registros, reportar nuevas averías y marcarlas como resueltas. */
+ */
 public class incidenciasDAO extends interfaces {
 
-    // Scanner para leer la entrada del usuario por teclado cuando se piden datos
-    Scanner sc = new Scanner(System.in);
+    private Scanner sc = new Scanner(System.in);
 
-    // Lista tipada que almacenará los objetos incidencias recuperados de la BD
-    // Se declara aquí como atributo para que esté disponible en toda la clase
-    ArrayList<incidencias> listaIncidencias = new ArrayList<incidencias>();
-
-    // Menu() muestra las opciones disponibles en un bucle hasta que el usuario pulse 0 para salir
+    /**
+     * Muestra un menu por pantalla con las opciones para ver fallos, 
+     * reportar nuevas averias o solucionarlas, y lee la opcion del usuario.
+     */
     @Override
     public void Menu() {
-        int op;
+        int opcion;
         do {
-            System.out.println("\n--- 6. INCIDENCIAS ---");
-            System.out.println("1. Ver lista de fallos");
+            System.out.println("\n--- MENU INCIDENCIAS ---");
+            System.out.println("1. Ver lista de incidencias");
             System.out.println("2. Reportar nueva averia");
-            System.out.println("3. Resolver incidencia (Update)");
+            System.out.println("3. Resolver/Modificar incidencia");
+            System.out.println("4. Borrar incidencia");
             System.out.println("0. Volver");
+            System.out.print("Opcion: ");
 
-            // Usamos try-catch porque si el usuario escribe algo que no es un número, parseInt lanzaría una excepción
-            // Si ocurre ese error, asignamos -1 para que el if no ejecute nada
-            try { op = Integer.parseInt(sc.nextLine()); } catch (Exception e) { op = -1; }
+            try {
+                opcion = Integer.parseInt(sc.nextLine());
+            } catch (Exception e) {
+                opcion = -1;
+            }
 
-            if (op == 1) Mostrar();
-            else if (op == 2) Crear();
-            else if (op == 3) Modificar();
-        } while (op != 0); // El bucle continúa mientras no se pulse 0
+            switch (opcion) {
+                case 1: Mostrar(); break;
+                case 2: Crear(); break;
+                case 3: Modificar(); break;
+                case 4: Borrar(); break;
+                case 0: System.out.println("Volviendo..."); break;
+                default: System.out.println("Opcion no valida.");
+            }
+        } while (opcion != 0);
     }
 
-    // Recibir() se conecta a la BD, ejecuta la consulta SELECT y convierte cada fila en un objeto incidencias
-    // Devuelve ArrayList<Object> porque así lo exige la clase abstracta; los objetos incidencias son válidos porque toda clase hereda de Object
+    /**
+     * Se conecta a la base de datos y trae todas las incidencias registradas 
+     * para convertirlas en una lista de objetos manejables.
+     * 
+     * @return Una lista con todos los objetos de tipo incidencias encontrados.
+     */
     @Override
     public ArrayList<Object> Recibir() {
-        ArrayList<Object> lista = new ArrayList<Object>(); // Lista vacía que iremos llenando
-
-        // Consulta SQL que trae las columnas que necesitamos; incluimos solucion_aplicada y fecha_resolucion
-        // porque pueden estar rellenas si la incidencia ya fue resuelta
-        String sql = "SELECT id_incidencia, id_maquina, descripcion, prioridad, estado, solucion_aplicada, fecha_resolucion FROM incidencias";
-
-        // Declaramos la conexión y los objetos SQL fuera del try para poder cerrarlos en el finally
-        Connection con = conexion.Conectar(); // Abre la conexión con la base de datos
-        Statement st = null;  // Statement sirve para enviar la consulta SQL a la BD
-        ResultSet rs = null;  // ResultSet es el "cursor" que recorre las filas devueltas por la consulta
+        ArrayList<Object> lista = new ArrayList<>();
+        String sql = "SELECT * FROM incidencias";
+        
+        Connection con = conexion.Conectar();
+        Statement st = null;
+        ResultSet rs = null;
 
         try {
-            st = con.createStatement();  // Creamos el Statement a partir de la conexión abierta
-            rs = st.executeQuery(sql);   // Enviamos el SELECT y el resultado queda en rs
+            st = con.createStatement();
+            rs = st.executeQuery(sql);
 
-            // rs.next() avanza una fila cada vez; devuelve false cuando no hay más filas
             while (rs.next()) {
-                // Leemos cada columna de la fila actual y la guardamos en una variable local
-                int       idIncidencia    = rs.getInt("id_incidencia");
-                int       idMaquina       = rs.getInt("id_maquina");
-                String    descripcion     = rs.getString("descripcion");
-                String    prioridad       = rs.getString("prioridad");
-                String    estado          = rs.getString("estado");
-                String    solucionAplicada = rs.getString("solucion_aplicada"); // Puede ser null si la incidencia no está resuelta aún
-                Timestamp fechaResolucion = rs.getTimestamp("fecha_resolucion"); // Timestamp porque la BD guarda fecha y hora; también puede ser null
-
-                // Con los datos de la fila construimos un objeto incidencias y lo metemos en la lista
-                lista.add(new incidencias(idIncidencia, idMaquina, descripcion,
-                          prioridad, estado, solucionAplicada, fechaResolucion));
+                incidencias i = new incidencias(
+                    rs.getInt("id_incidencia"),
+                    rs.getInt("id_maquina"),
+                    rs.getString("descripcion"),
+                    rs.getString("prioridad"),
+                    rs.getString("estado"),
+                    rs.getString("solucion_aplicada"),
+                    rs.getTimestamp("fecha_resolucion")
+                );
+                lista.add(i);
             }
-
         } catch (SQLException e) {
-            // Si hay cualquier error de base de datos, lo mostramos por consola y hacemos visible el detalle
-            System.out.println("Error al recibir datos de incidencias");
-            e.printStackTrace();
+            System.out.println("Error al recibir incidencias.");
         } finally {
-            // El bloque finally se ejecuta SIEMPRE, aunque haya habido un error
-            // Es importante cerrar los recursos para no dejar conexiones abiertas en la BD
             try {
-                if (rs  != null) rs.close();  // Cerramos el cursor de resultados
-                if (st  != null) st.close();  // Cerramos el statement
-                if (con != null) con.close(); // Cerramos la conexión con la BD
+                if (rs != null) rs.close();
+                if (st != null) st.close();
+                if (con != null) con.close();
             } catch (SQLException e) {
-                System.out.println("Error al cerrar conexion a la base de datos");
+                System.out.println("Error al cerrar conexion.");
             }
         }
-
-        return lista; // Devolvemos la lista con todos los objetos, o vacía si hubo error
+        return lista;
     }
 
-    // Crear() pide los datos mínimos al usuario y crea una nueva incidencia en la tabla
-    // La prioridad se fija como 'media' y el estado como 'abierta' por defecto
-    @Override
-    protected boolean Crear() {
-        System.out.print("ID de la maquina averiada: ");
-        int idM = Integer.parseInt(sc.nextLine());
-        System.out.print("Describe el problema: ");
-        String desc = sc.nextLine();
-
-        // 'media' y 'abierta' se insertan directamente como valores fijos sin pedírselos al usuario
-        // Los '?' son parámetros que se rellenan después para evitar inyección SQL
-        String sql = "INSERT INTO incidencias (id_maquina, descripcion, prioridad, estado) VALUES (?, ?, 'media', 'abierta')";
-
-        // try-with-resources: cierra automáticamente la conexión y el PreparedStatement al terminar el bloque
-        try (Connection c = conexion.Conectar(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, idM);
-            ps.setString(2, desc);
-            ps.executeUpdate(); // executeUpdate() se usa para INSERT, UPDATE y DELETE (no devuelve filas)
-            System.out.println("Incidencia reportada correctamente.");
-            return true;
-        } catch (SQLException e) { return false; }
-    }
-
-    // Modificar() sirve para cerrar una incidencia: cambia su estado a 'resuelta' y graba la solución aplicada
-    @Override
-    protected boolean Modificar() {
-        System.out.print("ID de la incidencia a cerrar: ");
-        int id = Integer.parseInt(sc.nextLine());
-        System.out.print("Solucion aplicada: ");
-        String sol = sc.nextLine();
-
-        // UPDATE que escribe la solución, cambia el estado y pone la fecha actual de resolución con NOW()
-        String sql = "UPDATE incidencias SET estado = 'resuelta', solucion_aplicada = ?, fecha_resolucion = NOW() WHERE id_incidencia = ?";
-
-        // try-with-resources: cierra automáticamente la conexión y el PreparedStatement al terminar el bloque
-        try (Connection c = conexion.Conectar(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, sol); // Primer '?': texto con la solución
-            ps.setInt(2, id);     // Segundo '?': ID del registro a actualizar
-            ps.executeUpdate();
-            System.out.println("Incidencia marcada como RESUELTA.");
-            return true;
-        } catch (SQLException e) { return false; }
-    }
-
-    // Mostrar() llama a Recibir() para obtener todos los registros y los imprime por consola
-    // Iteramos sobre Object; al hacer println se llama automáticamente al toString() definido en incidencias
+    /**
+     * Coge la lista de todas las incidencias y las imprime por consola 
+     * para que el usuario pueda ver el estado de cada averia.
+     * 
+     * @return true si los datos se mostraron sin problemas.
+     */
     @Override
     public boolean Mostrar() {
         ArrayList<Object> datos = Recibir();
         if (datos.isEmpty()) {
             System.out.println("No hay incidencias registradas.");
         } else {
-            for (Object inc : datos) {
-                System.out.println(inc); // Llama internamente a toString() del objeto
+            for (Object i : datos) {
+                System.out.println(i.toString());
             }
         }
         return true;
     }
 
-    // Borrar() no está implementado en esta versión; devuelve false para cumplir con el contrato de la clase abstracta
-    @Override protected boolean Borrar() { return false; }
+    /**
+     * Pide al usuario el ID de la maquina rota y una descripcion del fallo 
+     * para crear un nuevo ticket de incidencia en la base de datos.
+     * 
+     * @return true si la incidencia se guardo correctamente, false si no.
+     */
+    @Override
+    protected boolean Crear() {
+        System.out.println("\n-- Reportar Nueva Incidencia --");
+        System.out.print("ID Maquina: ");
+        int idM = Integer.parseInt(sc.nextLine());
+        System.out.print("Descripcion del fallo: ");
+        String desc = sc.nextLine();
+
+        String sql = "INSERT INTO incidencias (id_maquina, descripcion, prioridad, estado) VALUES (?, ?, 'media', 'abierta')";
+
+        try (Connection con = conexion.Conectar();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            
+            ps.setInt(1, idM);
+            ps.setString(2, desc);
+
+            ps.executeUpdate();
+            System.out.println("Incidencia registrada.");
+            return true;
+        } catch (SQLException e) {
+            System.out.println("Error al registrar incidencia.");
+            return false;
+        }
+    }
+
+    /**
+     * Pide el ID de una incidencia, muestra sus datos y permite cambiar el estado, 
+     * la prioridad o añadir una solucion detallada.
+     * 
+     * @return true si se actualizo bien, false si el ID no existe o fallo la conexion.
+     */
+    @Override
+    protected boolean Modificar() {
+        System.out.print("\nID de la incidencia a modificar/resolver: ");
+        int id = Integer.parseInt(sc.nextLine());
+
+        incidencias actual = buscarPorId(id);
+        if (actual == null) {
+            System.out.println("No se encontro la incidencia.");
+            return false;
+        }
+
+        System.out.println("Datos actuales: " + actual);
+        System.out.println("Nuevos datos (vacio para no cambiar):");
+
+        System.out.print("Estado [" + actual.getEstado() + "]: ");
+        String input = sc.nextLine();
+        if (!input.isEmpty()) actual.setEstado(input);
+
+        System.out.print("Prioridad [" + actual.getPrioridad() + "]: ");
+        input = sc.nextLine();
+        if (!input.isEmpty()) actual.setPrioridad(input);
+
+        System.out.print("Solucion [" + actual.getSolucionAplicada() + "]: ");
+        input = sc.nextLine();
+        if (!input.isEmpty()) actual.setSolucionAplicada(input);
+
+        String sql = "UPDATE incidencias SET estado=?, prioridad=?, solucion_aplicada=?, fecha_resolucion=NOW() WHERE id_incidencia=?";
+
+        try (Connection con = conexion.Conectar();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            
+            ps.setString(1, actual.getEstado());
+            ps.setString(2, actual.getPrioridad());
+            ps.setString(3, actual.getSolucionAplicada());
+            ps.setInt(4, id);
+
+            ps.executeUpdate();
+            System.out.println("Incidencia actualizada.");
+            return true;
+        } catch (SQLException e) {
+            System.out.println("Error al actualizar la incidencia.");
+            return false;
+        }
+    }
+
+    /**
+     * Pide el ID de una incidencia y la borra por completo de la base de datos.
+     * 
+     * @return true si el borrado fue exitoso, false si el registro no existia.
+     */
+    @Override
+    protected boolean Borrar() {
+        System.out.print("\nID de la incidencia a borrar: ");
+        int id = Integer.parseInt(sc.nextLine());
+
+        String sql = "DELETE FROM incidencias WHERE id_incidencia = ?";
+
+        try (Connection con = conexion.Conectar();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            
+            ps.setInt(1, id);
+            int filas = ps.executeUpdate();
+            
+            if (filas > 0) {
+                System.out.println("Incidencia borrada.");
+                return true;
+            } else {
+                System.out.println("No se encontro el ID.");
+                return false;
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al borrar incidencia.");
+            return false;
+        }
+    }
+
+    /**
+     * Busca en la base de datos una incidencia concreta usando su numero de buscador.
+     * 
+     * @param id El numero identificador de la incidencia que queremos localizar.
+     * @return El objeto con los datos de la incidencia, o null si no se encuentra.
+     */
+    private incidencias buscarPorId(int id) {
+        String sql = "SELECT * FROM incidencias WHERE id_incidencia = ?";
+        try (Connection con = conexion.Conectar();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            
+            if (rs.next()) {
+                return new incidencias(
+                    rs.getInt("id_incidencia"),
+                    rs.getInt("id_maquina"),
+                    rs.getString("descripcion"),
+                    rs.getString("prioridad"),
+                    rs.getString("estado"),
+                    rs.getString("solucion_aplicada"),
+                    rs.getTimestamp("fecha_resolucion")
+                );
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al buscar incidencia por ID.");
+        }
+        return null;
+    }
 }
